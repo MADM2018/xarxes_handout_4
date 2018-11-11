@@ -1,0 +1,125 @@
+---
+title: "Handout 4"
+output: html_document
+---
+**Students' names**
+
+* Reinier César Mujica Hernández
+* ...
+
+```{r global_options, include=FALSE}
+#adapt it at your taste and convenience
+knitr::opts_chunk$set(fig.width=8, fig.height=8, fig.align="center", echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(igraph)
+library(igraphdata)
+data(UKfaculty)
+```
+
+
+*1)* The graph *UKfaculty* from **igraphdata** describes the personal friendship network of 81 UK university professors. It is a directed and weighted network (where an arc X->Y means that X reports to be friend of Y with relative friendship weight w>0).
+```{r}
+plot(UKfaculty)
+```
+*A)* Extract from it an undirected and unweighted  network where an edge X-Y means that both individuals X, Y have declared to be friends of each other. Plot it.
+```{r}
+g1 <- as.undirected(UKfaculty, mode="mutual")
+plot(g1)
+```
+*A.1)* Compute its order (it should be 81), its size and its density. Would you consider it sparse?
+``` {r}
+g_order = gorder(g1)
+g_order
+g_size = gsize(g1)
+g_size
+g_dens = edge_density(g1)
+g_dens
+```
+Si se puede considerar sparse ya que tiene una densidad muy pequeña
+
+*A.2)* Is it connected? If not, what percentage of the whole set of nodes covers the largest connected component?
+Would you consider it a giant connected component? 
+``` {r}
+scc <- components(g1, mode = c("strong"))
+scc
+```
+No es conexo al ser no dirigido y tener mas de una componente fuertemente conexa.
+``` {r}
+percent_of_max_scc <- max(scc$csize) / g_order
+percent_of_max_scc
+```
+Lo considero un grafo con una componente conexa gigante.
+
+*A.3)* Compute its mean degree. What) is the (theoretical) relationship between the average degree and the density of a graph? Confirm it on this network
+
+```{r}
+mean_degrees <- mean(degree(g1))
+mean_degrees
+
+mean_degrees_assert = g_dens * (g_order-1)
+mean_degrees_assert
+
+mean_degrees == mean_degrees_assert
+```
+
+*A.4)* Compute the range and the median of the degrees. What are the meanings of these indices? Compare the median and the mean, and guess from their relationship the shape of the degree distribution (is it symmetric, does it have a right tail, or a left tail?).
+```{r}
+degrees = sort(degree(g1)) 
+
+min_d <- degrees[1]
+min_d
+
+max_d <- degrees[g_order]
+max_d
+
+g_median = median(degrees)
+g_median
+```
+Es un right tail al ser la media mayor que la mediana.
+
+*A.5)* Plot its degree distribution in linear, log and log-log scale (do not take into account the nodes of degree 0, if any). Simply by looking at these graphics, answer the following two questions: Does this distribution seem to follow a power-law? And a Poisson (i.e., exponential) law?
+``` {r}
+g2 <- delete.vertices(g1, degree(g1)==0)
+d_dist <- degree_distribution(g2)
+d_dist
+
+plot(d_dist, type="o",pch=20,main="Degrees distribution lineal",xlab="Degree",ylab="Proportion")
+plot(d_dist, log="x", type="o",pch=20,main="Degrees distribution log",xlab="Degree",ylab="Proportion")
+plot(d_dist, log="xy", type="o",pch=20,main="Degrees distribution log-log",xlab="Degree",ylab="Proportion")
+```
+
+*A.6)* Compute its diameter, its average distance, and its 90% effective diameter (if it is not connected, compute them on the largest connected component). 
+
+```{r}
+component=decompose(g2, mode = c("strong"), 
+  min.vertices = 3)
+g3 = component[[1]]
+
+diameter(g3)
+
+mean(distances(g3))
+
+rel.hop.plot=function(x,X=g3){length(unlist(ego(X,order=x,nodes=V(X))))/gorder(X)^2}
+hop.plot.g3=round(sapply(1:diameter(g3),FUN=rel.hop.plot),4)
+plot(hop.plot.g3,pch=20,main="Relative hop plot",xlab="Hops",ylab="Probability",type="o")
+
+min(which(hop.plot.g3>=0.9))
+
+```
+
+*A.7)* Compute its average clustering coefficient and its transitivity coefficient.  What do these values tell you about the clustering coefficient of the nodes with very large degree?
+
+Average clustering coefficient
+``` {r}
+transitivity(g3, type="average")
+```
+Transitivity coefficient
+``` {r}
+transitivity(g3)
+```
+
+
+*B)* Now, extract from the original *UKfaculty* a new undirected and unweighted network  where an edge X-Y means that both individuals X, Y have declared to be "stronger than average" friends of each other (friends with weight larger than the mean friendship weight, which you will have to compute beforehand). Compute for this new graph: its density; the percentage of the whole set of nodes covered by its largest connected component; the range, the mean and the median of the degrees; the diameter, average distance, and 90% effective diameter of its largest connected component; its average clustering coefficient and its transitivity coefficient. Comment the differences observed between the values obtained in this network of "strong friendship"and the "any friendship network" studied in (A). Do you find the differences (or the lack of them) reasonable?
